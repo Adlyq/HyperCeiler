@@ -16,38 +16,50 @@
 
   * Copyright (C) 2023-2024 HyperCeiler Contributions
 */
-package com.sevtinge.hyperceiler.module.hook.home.title;
+package com.sevtinge.hyperceiler.module.hook.home.title
 
-import android.text.TextUtils;
-import android.widget.TextView;
+import android.text.*
+import android.widget.*
+import com.github.kyuubiran.ezxhelper.HookFactory.`-Static`.createAfterHook
+import com.github.kyuubiran.ezxhelper.finders.*
+import com.sevtinge.hyperceiler.module.hook.home.*
+import com.sevtinge.hyperceiler.utils.*
+import de.robv.android.xposed.*
 
-import com.sevtinge.hyperceiler.module.base.BaseHook;
+class TitleMarquee : HomeBaseHook() {
 
-import de.robv.android.xposed.XposedHelpers;
-
-public class TitleMarquee extends BaseHook {
-    TextView mTitle;
-
-    @Override
-    public void init() {
-        Class<?> mItemIcon = findClassIfExists("com.miui.home.launcher.ItemIcon");
-
-        findAndHookMethod(mItemIcon, "onFinishInflate", new MethodHook() {
-            @Override
-            protected void after(MethodHookParam param) throws Throwable {
-                try {
-                    mTitle = (TextView) XposedHelpers.getObjectField(param.thisObject, "mTitleView");
-                } catch (Throwable t) {
-                    mTitle = (TextView) XposedHelpers.getObjectField(param.thisObject, "mTitle");
+    override fun initForNewHome() {
+        MethodFinder.fromClass("com.miui.home.launcher.ShortcutIcon").filterByName("onFinishInflate").first()
+            .createAfterHook {
+                with(it.thisObject as TextView) {
+                    ellipsize = TextUtils.TruncateAt.MARQUEE
+                    marqueeRepeatLimit = -1
+                    isSelected = true
+                    isSingleLine = true
+                    // isHorizontalFadingEdgeEnabled = true
+                    // setHorizontallyScrolling(true)
                 }
-
-                mTitle.setEllipsize(TextUtils.TruncateAt.MARQUEE);
-                mTitle.setHorizontalFadingEdgeEnabled(true);
-                mTitle.setSingleLine();
-                mTitle.setMarqueeRepeatLimit(-1);
-                mTitle.setSelected(true);
-                mTitle.setHorizontallyScrolling(true);
             }
-        });
+        MethodFinder.fromClass("com.miui.home.launcher.ShortcutIcon").filterByName("isNeedDrawIconMask").first().replaceMethod { false }
+    }
+
+    override fun initForHomeLower9777() {
+        MethodFinder.fromClass("com.miui.home.launcher.ItemIcon").filterByName("onFinishInflate").first()
+            .createAfterHook {
+                val mTitle: TextView = try {
+                    XposedHelpers.getObjectField(it.thisObject, "mTitleView") as TextView
+                } catch (t: Throwable) {
+                    XposedHelpers.getObjectField(it.thisObject, "mTitle") as TextView
+                }
+                with(mTitle) {
+                    ellipsize = TextUtils.TruncateAt.MARQUEE
+                    isHorizontalFadingEdgeEnabled = true
+                    isSingleLine = true
+                    marqueeRepeatLimit = -1
+                    isSelected = true
+                    setHorizontallyScrolling(true)
+                }
+            }
     }
 }
+
